@@ -1,5 +1,5 @@
 # GetMethods
-A simple Python script to return allowed HTTP Verbs on a list of servers from .txt
+A simple Python script to check for OPTIONS verb on servers. Can be edited for other options easily.
 
 Accepts a list of websites in .txt format, one website per line.
 
