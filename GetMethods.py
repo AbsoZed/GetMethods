@@ -4,6 +4,14 @@ import sys
 import getopt
 import httplib
 import csv
+import pandas as pd
+#from termcolor import colored, cprint
+
+"""
+Requires VT-100 support which I do not currently have on my work machine.
+Can be uncommented to allow use of cprint('word','color')
+"""
+
 
 
 def main(argv):
@@ -11,7 +19,7 @@ def main(argv):
 	outputfile = ''
 	notvulnsites = []
 	vulnsites = []
-
+	knownhttpcodes = [301, 500, 501, 405]
 	
 	try:
 		opts, args = getopt.getopt(argv, "hi:o:", ["ifile=", "ofile="])
@@ -47,22 +55,25 @@ def main(argv):
 				else:
 					print '\n' + site + ' is VULNERABLE.'
 					vulnsites.append(site)
+			elif response.status in knownhttpcodes:
+				print site + ' is not vulnerable, returned known HTTP Error Code.'
+				notvulnsites.append(site)
 			else:
 				print site + ' did not return a header. Assuming it is clean.'
 				notvulnsites.append(site)
-				
 		except NameError:
-			print 'Holy Shit, you broke it!'
+			print 'Holy shit, you broke it!'
 	
 	print '\nCLEAN SITES:' + str(notvulnsites)
 	print '\nVULNERABLE SITES:' + str(vulnsites)
 	
-	#To be implemented. Trying to make Python play nice with CSV makes me sad.
-	
-	#with open (outputfile, 'w') as outfile:
-	#			writer = csv.writer(outfile, delimiter=',',quotechar='"', quoting=csv.QUOTE_MINIMAL)
-	#			fields = ['Vulnerable Sites', 'False Positives']
-	#			writer.writerows([fields])
+	if outputfile is not '':
+		try:
+			CSVOut = {'Vulnerable Sites':vulnsites,'False Positives':notvulnsites}
+			df = pd.DataFrame.from_dict(CSVOut, orient='index')
+			df.to_csv(outputfile)
+		except:
+			print 'Couldn\'t lock file! Check permissions and open files!'
 	
 
 if __name__ == "__main__":
