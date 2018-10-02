@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
+import ssl
 import sys
 import getopt
 import httplib
 import csv
 import pandas as pd
-#from termcolor import colored, cprint
 
 """
+from termcolor import colored, cprint
+
 Requires VT-100 support which I do not currently have on my work machine.
 Can be uncommented to allow use of cprint('word','color')
 """
@@ -38,13 +40,28 @@ def main(argv):
 	sites = open(inputfile, "r")
 
 	for line in sites.readlines():
-		site = line.rstrip()
-		cxn = httplib.HTTPConnection(site)
-		cxn.request('OPTIONS', '/')
-		response = cxn.getresponse()
-		print '\nGot Status: ' + str(response.status), response.reason + ': '
-		result = response.getheader('allow')
-		cxn.close()
+		
+		try:
+			site = line.rstrip()
+			cxn = httplib.HTTPConnection(site)
+			cxn.request('OPTIONS', '/')
+			response = cxn.getresponse()
+			cxn.close()
+		except:
+			print 'FQDN could not be resolved. Moving on.'
+		
+		
+		if response.status == 302:
+			print '\nGot Status: ' + str(response.status), response.reason + ': Trying HTTPS before giving up.'
+			cxn = httplib.HTTPSConnection(site, timeout=5, context=ssl._create_unverified_context())
+			cxn.request('OPTIONS', '/')
+			response = cxn.getresponse()
+			result = response.getheader('allow')
+			cxn.close()
+		else:
+			print '\nGot Status: ' + str(response.status), response.reason + ': '
+			result = response.getheader('allow')
+			cxn.close()
 		
 		try:
 			if result is not None:
@@ -56,22 +73,21 @@ def main(argv):
 					print '\n' + site + ' is VULNERABLE.'
 					vulnsites.append(site)
 			elif response.status in knownhttpcodes:
-				print site + ' is not vulnerable, returned known HTTP Error Code.'
+				print site + ' is not vulnerable, returned known HTTP Code used for mitigation.'
 				notvulnsites.append(site)
 			else:
 				print site + ' did not return a header. Assuming it is clean.'
 				notvulnsites.append(site)
 		except NameError:
-			print 'Holy shit, you broke it!'
+			print 'Failed to run! Check format of files, internet connection.'
 	
 	print '\nCLEAN SITES:' + str(notvulnsites)
 	print '\nVULNERABLE SITES:' + str(vulnsites)
 	
+	
 	if outputfile is not '':
 		try:
-			CSVOut = {'Vulnerable Sites':vulnsites,'False Positives':notvulnsites}
-			df = pd.DataFrame.from_dict(CSVOut, orient='index')
-			df.to_csv(outputfile)
+			pd.concat([pd.DataFrame({'Vulnerable Sites':vulnsites}),pd.DataFrame({'Possible False Positives':notvulnsites})],axis=1).to_csv(outputfile)
 		except:
 			print 'Couldn\'t lock file! Check permissions and open files!'
 	
