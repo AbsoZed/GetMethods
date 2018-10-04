@@ -9,7 +9,6 @@ import pandas as pd
 
 """
 from termcolor import colored, cprint
-
 Requires VT-100 support which I do not currently have on my work machine.
 Can be uncommented to allow use of cprint('word','color')
 """
@@ -56,22 +55,44 @@ def main(argv):
 			cxn = httplib.HTTPSConnection(site, timeout=5, context=ssl._create_unverified_context())
 			cxn.request('OPTIONS', '/')
 			response = cxn.getresponse()
-			result = response.getheader('allow')
+			allowresult = response.getheader('allow')
+			corsresult = response.getheader('Access-Control-Allow-Methods')
+			publicresult = response.getheader('public')
 			cxn.close()
 		else:
 			print '\nGot Status: ' + str(response.status), response.reason + ': '
-			result = response.getheader('allow')
+			allowresult = response.getheader('allow')
+			publicresult = response.getheader('public')
 			cxn.close()
 		
 		try:
-			if result is not None:
-				print 'Allowed methods are ' + result
-				if 'OPTIONS' not in result:
-					print site + ' is not vulnerable.'
-					notvulnsites.append(site)
-				else:
+			if allowresult is not None:
+				if 'OPTIONS' in allowresult:
+					print 'Allowed methods in ALLOW header are ' + allowresult
 					print '\n' + site + ' is VULNERABLE.'
 					vulnsites.append(site)
+				else:
+					print site + ' is not vulnerable.'
+					notvulnsites.append(site)
+					
+			elif publicresult is not None:
+				if 'OPTIONS' in publicresult:
+					print 'Allowed methods in PUBLIC header are ' + allowresult
+					print '\n' + site + ' is VULNERABLE.'
+					vulnsites.append(site)
+				else:
+					print site + ' is not vulnerable.'
+					notvulnsites.append(site)
+					
+			elif corsresult is not None:	
+				if 'OPTIONS' in corsresult:
+					print 'Allowed CORS Methods are ' + corsresult
+					print '\n' + site + ' is VULNERABLE.'
+					vulnsites.append(site)	
+				else:
+					print site + ' is not vulnerable.'
+					notvulnsites.append(site)
+					
 			elif response.status in knownhttpcodes:
 				print site + ' is not vulnerable, returned known HTTP Code used for mitigation.'
 				notvulnsites.append(site)
