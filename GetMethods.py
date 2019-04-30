@@ -77,7 +77,7 @@ def main(argv):
 					
 			elif publicresult is not None:
 				if 'OPTIONS' in publicresult:
-					print 'Allowed methods in PUBLIC header are ' + allowresult
+					print 'Allowed methods in PUBLIC header are ' + publicresult
 					print '\n' + site + ' is VULNERABLE.'
 					vulnsites.append(site)
 				else:
